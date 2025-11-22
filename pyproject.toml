@@ -1,0 +1,13 @@
+[project]
+name = "17-chatbot-langgraph"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "langchain>=1.0.8",
+    "langchain-community>=0.4.1",
+    "langchain-openai>=1.0.3",
+    "langgraph>=1.0.3",
+    "langsmith>=0.4.46",
+]
