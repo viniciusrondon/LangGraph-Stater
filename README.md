@@ -132,7 +132,3 @@ llm_with_tools = llm.bind_tools(tools=tools)
 ```
 
 This allows the model to emit structured tool calls, which are then intercepted by the graph's conditional logic.
-
----
-
-_Documentation generated for LangGraph Chatbot Projects._
