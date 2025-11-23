@@ -2,124 +2,137 @@
 
 ## Abstract
 
-This project demonstrates the implementation of a stateful conversational agent using **LangGraph** and **LangChain**. The primary objective is to construct a robust chatbot architecture that leverages a graph-based state management system to handle conversation history and generate context-aware responses. The system utilizes OpenAI's `gpt-4o-mini` model for natural language processing, integrated within a `StateGraph` workflow. This documentation outlines the theoretical framework, technical architecture, installation procedures, and usage guidelines for the application.
+This project demonstrates the implementation of stateful conversational agents using **LangGraph** and **LangChain**. It progresses from a foundational chatbot that maintains conversation history to a more advanced agent capable of utilizing external tools to fetch real-time information. The system leverages OpenAI's `gpt-4o-mini` model and `StateGraph` workflows to manage complex interaction patterns.
 
 ## 1. Introduction
 
-In the domain of Large Language Model (LLM) applications, maintaining state across interactions is a critical challenge. Traditional linear chains often struggle with complex, multi-turn dialogues where context retention is paramount. **LangGraph** addresses this by modeling the application logic as a graph, where nodes represent processing steps and edges define the flow of data. This project exemplifies a foundational implementation of such a system, creating a chatbot capable of appending new messages to a persistent state, thereby preserving the conversational thread.
+Maintaining state and context is crucial for building effective Large Language Model (LLM) applications. **LangGraph** facilitates this by modeling application logic as a graph, where nodes represent processing steps and edges define data flow. This repository contains two key implementations:
 
-## 2. Technical Architecture
+1.  **Basic Chatbot**: A stateful agent that remembers conversation history.
+2.  **Tool-Augmented Chatbot**: An advanced agent that can query external sources (Wikipedia, Arxiv) to answer questions beyond its training data.
 
-The core of the application is built upon the `StateGraph` class from the `langgraph` library. The architecture consists of the following key components:
+## 2. Project 1: Basic Stateful Chatbot
 
-### 2.1. State Definition
+_Source: `02.chatbot.ipynb`_
 
-The state is defined as a `TypedDict` named `State`, which serves as the central data structure passed between nodes.
+### 2.1. Technical Architecture
+
+The core architecture uses a `StateGraph` with a single processing node.
+
+- **State**: A `TypedDict` containing a list of messages.
+- **Node**: `chatbot` - Invokes the LLM with the current message history.
+- **Edge**: Linear flow `START -> chatbot -> END`.
+
+### 2.2. Graph Visualization
+
+```mermaid
+graph LR
+    START --> chatbot
+    chatbot --> END
+    style chatbot fill:#f9f,stroke:#333,stroke-width:2px
+```
+
+## 3. Project 2: Chatbot with External Tools
+
+_Source: `03.chat_external_tools.ipynb`_
+
+### 3.1. Overview
+
+This project extends the basic chatbot by integrating external tools. The agent can decide whether to answer directly or use a tool to gather more information.
+
+### 3.2. Key Components
+
+- **Tools**:
+  - `WikipediaQueryRun`: Searches Wikipedia for general knowledge.
+  - `ArxivQueryRun`: Searches Arxiv for scientific papers.
+- **ToolNode**: A prebuilt node that executes the selected tools.
+- **Conditional Logic**: The graph checks if the LLM requested a tool call.
+  - If **Yes**: Route to `tools` node.
+  - If **No**: Route to `END`.
+
+### 3.3. Graph Visualization
+
+```mermaid
+graph TD
+    START --> chatbot
+    chatbot --> tools_condition
+    tools_condition -- "Tool Requested" --> tools
+    tools_condition -- "Direct Response" --> END
+    tools --> chatbot
+
+    style chatbot fill:#f9f,stroke:#333,stroke-width:2px
+    style tools fill:#bbf,stroke:#333,stroke-width:2px
+    style tools_condition fill:#fff,stroke:#333,stroke-dasharray: 5 5
+```
+
+## 4. Prerequisites
+
+- **Python**: Version 3.10 or higher.
+- **API Keys**:
+  - `OPENAI_API_KEY`: For the LLM.
+  - `LANGCHAIN_API_KEY`: For LangSmith tracing (optional).
+  - `HF_TOKEN`, `NEO4J_URI` etc. (if using specific extensions).
+
+## 5. Installation
+
+1.  **Clone the Repository** (or download notebooks).
+2.  **Create a Virtual Environment**:
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate  # Windows: .venv\Scripts\activate
+    ```
+3.  **Install Dependencies**:
+    ```bash
+    pip install langchain-openai langgraph python-dotenv ipykernel langchain-community wikipedia arxiv
+    ```
+
+## 6. Configuration
+
+Create a `.env` file in the root directory:
+
+```env
+OPENAI_API_KEY=your_key_here
+LANGCHAIN_API_KEY=your_key_here
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_PROJECT=your_project_name
+```
+
+## 7. Usage
+
+### Running the Basic Chatbot
+
+1.  Open `02.chatbot.ipynb`.
+2.  Run all cells to initialize the graph and interact with the bot.
+
+### Running the Tool-Augmented Chatbot
+
+1.  Open `03.chat_external_tools.ipynb`.
+2.  Run the cells to bind tools (Wikipedia, Arxiv) to the LLM.
+3.  Interact with the bot. Try asking questions like _"What is ZCA?"_ to trigger a tool call.
+
+## 8. Code Structure Analysis
+
+### State Management
+
+Both projects use a shared state definition:
 
 ```python
 class State(TypedDict):
     messages: Annotated[list, add_messages]
 ```
 
-- **`messages`**: A list storing the conversation history.
-- **`Annotated[list, add_messages]`**: This annotation specifies the reducer function `add_messages`. When a new message is returned by a node, it is not merely overwriting the existing list but is appended to it, ensuring a cumulative history.
+The `add_messages` reducer ensures that new interactions are appended to the history rather than replacing it.
 
-### 2.2. Graph Nodes
+### Tool Integration (Project 2)
 
-The graph currently comprises a single primary node:
-
-- **`chatbot`**: This function acts as the processing engine. It takes the current `State` as input, invokes the LLM (GPT-4o-mini) with the message history, and returns the generated response.
-
-### 2.3. Graph Edges
-
-The workflow is defined by linear edges:
-
-1.  **`START` -> `chatbot`**: The entry point of the graph immediately directs execution to the chatbot node.
-2.  **`chatbot` -> `END`**: After the chatbot generates a response, the workflow terminates.
-
-## 3. Prerequisites
-
-To replicate this implementation, the following prerequisites must be met:
-
-- **Python**: Version 3.10 or higher.
-- **API Keys**: Access to the following services:
-  - OpenAI API
-  - LangChain (LangSmith) for tracing (optional but recommended)
-  - NVIDIA API (if applicable for extensions)
-  - HuggingFace (if applicable for extensions)
-  - Neo4j (if applicable for extensions)
-
-## 4. Installation
-
-Follow these steps to set up the development environment:
-
-1.  **Clone the Repository** (if applicable) or download the notebook.
-2.  **Create a Virtual Environment** (recommended):
-    ```bash
-    python -m venv .venv
-    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-    ```
-3.  **Install Dependencies**:
-    Ensure you have the required packages installed. You can install them using `pip`:
-    ```bash
-    pip install langchain-openai langgraph python-dotenv ipykernel
-    ```
-
-## 5. Configuration
-
-The application relies on environment variables for secure API key management. Create a `.env` file in the root directory of the project with the following keys:
-
-```env
-OPENAI_API_KEY=your_openai_api_key
-LANGCHAIN_API_KEY=your_langchain_api_key
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_PROJECT=your_project_name
-# Additional keys as needed
-NVIDIA_API_KEY=...
-HF_TOKEN=...
-NEO4J_URI=...
-NEO4J_USERNAME=...
-NEO4J_PASSWORD=...
-```
-
-## 6. Usage
-
-The project is structured as a Jupyter Notebook (`02.chatbot.ipynb`). To execute the chatbot:
-
-1.  Launch Jupyter Notebook or JupyterLab:
-    ```bash
-    jupyter notebook
-    ```
-2.  Open `02.chatbot.ipynb`.
-3.  Execute the cells sequentially.
-    - **Setup**: Loads environment variables.
-    - **Model Initialization**: Initializes `ChatOpenAI`.
-    - **Graph Construction**: Defines the `State`, `chatbot` node, and compiles the graph.
-4.  (Optional) To interact with the chatbot, you would typically run the compiled graph with an input message (code for execution is implied in the notebook structure).
-
-## 7. Code Structure Analysis
-
-### Import Statements
-
-The script imports necessary modules for environment management (`dotenv`, `os`), LLM integration (`langchain_openai`), and graph construction (`langgraph`, `typing`).
-
-### LLM Initialization
+The integration is achieved via `bind_tools`:
 
 ```python
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm_with_tools = llm.bind_tools(tools=tools)
 ```
 
-The model is instantiated with a temperature of 0 to ensure deterministic and precise responses, suitable for a logic-driven chatbot.
-
-### Graph Compilation
-
-```python
-graph_builder = StateGraph(State)
-graph_builder.add_node("chatbot", chatbot)
-graph_builder.add_edge(START, "chatbot")
-graph_builder.add_edge("chatbot", END)
-```
-
-This block programmatically assembles the workflow, registering the node and defining the execution path.
+This allows the model to emit structured tool calls, which are then intercepted by the graph's conditional logic.
 
 ---
+
+_Documentation generated for LangGraph Chatbot Projects._
